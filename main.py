@@ -1,5 +1,5 @@
 import curdis, time,  asyncio, json
-TOKEN = "MTA5MDI0Mzk2Njc3Mjk4NTg5Nw.GTciW2.Z9_PLAPyDuRoMKZuN8iZSduFNtLPFXZcelydG4"
+TOKEN = "какіш"
 bot = curdis.DiscordAPI(token=TOKEN)
 channel_id = "1086953979948314694"
 

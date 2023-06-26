@@ -1,10 +1,12 @@
 import op, json, requests, websockets, asyncio
+from message import Message
 from consts import *
 
 class WSBot:
     def __init__(self, token):
         self.__interval = None
         self.__sequence = None
+        self.__token = token
 
         self.__auth = {
             "token": token,
@@ -19,13 +21,13 @@ class WSBot:
             }
         }
     
-    async def run(self, message_handler):
+    async def run(self, message_handler, handler_by_command):
         async with websockets.connect(WS_API) as ws:                
             await self.__hello(ws)
             if self.__interval is None:
                 raise RuntimeError("discord hello ws failded")
 
-            await asyncio.gather(self.__read_message(ws, message_handler), self.__heartbeat(ws))
+            await asyncio.gather(self.__read_message(ws, message_handler, handler_by_command), self.__heartbeat(ws))
 
     def __opcode(self, opcode, payload):
         return {
@@ -60,32 +62,20 @@ class WSBot:
                 id = data["d"]["id"]
                 content = data["d"]["content"]
                 channel_id = data["d"]["channel_id"]
-                username = data["d"]["author"]["username"]
                 author_id = data["d"]["author"]["id"]
+                message = Message(self.__token, content, channel_id, id, author_id)
+
+                message_handler(message)
             elif event_type == "INTERACTION_CREATE":
                 interaction_id = data["d"]["id"]
                 interaction_token = data["d"]["token"]
                 
-                response = ""
+                response = handler_by_command[data["d"]["data"]["name"]]()
                 payload = { "type": 4, "data": { "content": response } }
                 headers = {
                     "Content-Type": "application/json"
                 }
+                print(f"response - {response}")
 
-                response = requests.post(f"{API}/interactions/{interaction_id}/{interaction_token}/callback", data=payload, headers=headers)
-
-    # def set_message_handler(self, handler):
-    #     self.__message_handler = handler
-    
-    # def add_handler(self, key: str, handler):
-    #     self.__handlers[key] = handler
-
-    # def command(self, key: str):
-    #     def wrapper(func: Callable):
-    #         self.add_handler(key, func)
-    #     return wrapper
-    
-    # def message_handler(self):
-    #     def wrapper(func):
-    #         self.set_message_handler(func)
-    #     return wrapper
+                response = requests.post(f"{API}/interactions/{interaction_id}/{interaction_token}/callback", json=payload, headers=headers)
+                response.raise_for_status()
